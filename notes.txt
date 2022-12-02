@@ -1,0 +1,10 @@
+//1 = kb+xa
+//k is the number of times we need to add or subtract b to get to one
+
+//b = q(2)a + r(2)
+//q is quotient
+//r(2)< a
+
+//r(2) = b - q(2)a
+//r(2) = b + x(2)a
+//repeat until r(i) = 1
