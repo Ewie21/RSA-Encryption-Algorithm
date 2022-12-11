@@ -12,3 +12,4 @@ num-prime = { version = "0.4.2", features = ["num-bigint"] }
 ascii_converter = "0.3.0"
 num-bigint = "0.4.3"
 glass_pumpkin = "1.5.0"
+num-primes = "0.3.0"
