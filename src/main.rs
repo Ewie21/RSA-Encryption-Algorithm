@@ -88,8 +88,11 @@ fn message_from_big_ints(s:String, n:BigInt, d:BigInt) -> Option<String>{
         //set.insert(s_u128[i].try_into().expect(ERROR));
         set.push(s_u128[i] as u32);
     }
-    let mut bytes_array:ByteArray = ByteArray::from(set);
-    let m:String = ascii_converter::binary_to_string(bytes_array).ok().expect(ERROR);
+    //TODO convert from u32(bits) to bytes; fix shit
+    let i:usize = 0;
+    let mut bytes_array:Vec<u32> = u32::to_ne_bytes(set.iter().for_each(i)).to_vec();//wrong: ascii_converter::decimals_to_binary(set).ok().expect(ERROR);
+    let mut bits_array:Vec<u32> = vec![];
+    let m:String = ascii_converter::decimals_to_string(bytes_array).ok().expect(ERROR);
     Some(m)
 }
 
