@@ -1,15 +1,24 @@
 use num::bigint::Sign::Plus;
-use num::{FromPrimitive};
+use num::{FromPrimitive, range, ToPrimitive};
 use num_bigint::BigInt;
 use ascii_converter;
 use glass_pumpkin::prime;
 use rand::rngs::OsRng;
 use num::Integer;
+use std::str::{FromStr, Bytes};
+use bit_set::BitSet;
+use byte_array::ByteArray;
 
 pub const ERROR:&'static str =  "Houston, we have a problem!";
 fn main() {
     println!("Hello, world!");
-    encrypt();
+    //encrypt();
+    let n:BigInt = BigInt::new(Plus, vec![5111,4294792,744539279,536590,3777,592968233,1241773,014708874,634074,32037,787986733]);
+    let d:BigInt = BigInt::new(Plus, vec![3540476331,3423865,4946,4192,8350607,59732,544677,924822556,155,0587658404,0590939,4423]);
+    let m:String = String::from_str("43523480568957643556056598073588326045632358739827075176433014710423208072366,7660875398775197036017946797402885728253113750305118616987624877524547526777,17806249614613240709012454116259851565279747745086632798880391847544812873910,30602200878766303830856244611504459722460374352086909538344418893252797099823,10276091053023654663382081867734471218386878308189837987833637383519654225401,28033260257532641202382135514168373578086822629095764654564412078020896066501").ok().expect(ERROR);
+    //let s:BigInt = decrypt_message(n, d, m).expect(ERROR);
+    let s:String = message_from_big_ints(m, n, d).expect(ERROR);
+    println!("{:?}", s);
     
 }
 
@@ -27,7 +36,7 @@ fn encrypt(){
     println!("{:?}", encrypted);
 }
 
-fn decrypt() -> BigInt{
+fn break_decrypt() -> BigInt{
     let one = BigInt::new(Plus, vec![1]);
     let public_key:(u64, BigInt, BigInt) = (255, BigInt::new(Plus, vec![511142,94792744,53927,953659,03777592,96823331,241773,014708874,6340,7432037,67879,86733]), BigInt::from_u128(283885473145120582674843094238786272231).expect(ERROR));
     let m:BigInt = BigInt::new(Plus, vec![88079,25475,557073180,772056,9331,672906466,182201,378675,96140,74399,726068082,3256474]);
@@ -64,9 +73,24 @@ fn message_to_big_int(message:String) -> Vec<BigInt> {
     m
 }
 
-fn message_from_big_int(s:BigInt) -> Option<String>{
-    //let message:String = ;
-    None
+fn message_from_big_ints(s:String, n:BigInt, d:BigInt) -> Option<String>{
+    let s:&str = &s.to_string();
+    let mut s_u128:Vec<u128> = vec![];
+    let s_vec:Vec<String> = s.split(",").map(str::to_string).collect();
+    for i in 0..s_vec.len(){
+        let s_int:BigInt = BigInt::from_str(s_vec[i].as_str()).ok().expect(ERROR);
+        let decrypted:BigInt = decrypt_message(n.clone(), d.clone(), s_int).expect(ERROR);
+        s_u128.push(decrypted.to_u128().expect(ERROR));
+    }
+    //let mut set:BitSet = BitSet::new();
+    let mut set:Vec<u32> = vec![];
+    for i in 0..s_u128.len(){
+        //set.insert(s_u128[i].try_into().expect(ERROR));
+        set.push(s_u128[i] as u32);
+    }
+    let mut bytes_array:ByteArray = ByteArray::from(set);
+    let m:String = ascii_converter::binary_to_string(bytes_array).ok().expect(ERROR);
+    Some(m)
 }
 
 fn encrypt_message(n:BigInt, e:BigInt, s:Vec<BigInt>) -> Option<Vec<BigInt>>{
