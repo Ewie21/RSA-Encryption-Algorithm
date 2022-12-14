@@ -1,13 +1,12 @@
 use num::bigint::Sign::Plus;
-use num::{FromPrimitive, range, ToPrimitive};
+use num::{FromPrimitive, ToPrimitive};
 use num_bigint::BigInt;
 use ascii_converter;
 use glass_pumpkin::prime;
 use rand::rngs::OsRng;
 use num::Integer;
-use std::str::{FromStr, Bytes};
-use bit_set::BitSet;
-use byte_array::ByteArray;
+use core::str;
+use std::str::{FromStr};
 
 pub const ERROR:&'static str =  "Houston, we have a problem!";
 fn main() {
@@ -16,7 +15,7 @@ fn main() {
     let n:BigInt = BigInt::new(Plus, vec![5111,4294792,744539279,536590,3777,592968233,1241773,014708874,634074,32037,787986733]);
     let d:BigInt = BigInt::new(Plus, vec![3540476331,3423865,4946,4192,8350607,59732,544677,924822556,155,0587658404,0590939,4423]);
     let m:String = String::from_str("43523480568957643556056598073588326045632358739827075176433014710423208072366,7660875398775197036017946797402885728253113750305118616987624877524547526777,17806249614613240709012454116259851565279747745086632798880391847544812873910,30602200878766303830856244611504459722460374352086909538344418893252797099823,10276091053023654663382081867734471218386878308189837987833637383519654225401,28033260257532641202382135514168373578086822629095764654564412078020896066501").ok().expect(ERROR);
-    //let s:BigInt = decrypt_message(n, d, m).expect(ERROR);
+    //let s:BigInt = decrypt_message(n, d, m).expect(ERROR);7
     let s:String = message_from_big_ints(m, n, d).expect(ERROR);
     println!("{:?}", s);
     
@@ -24,35 +23,36 @@ fn main() {
 
 fn encrypt(){
     //let init_key:Vec<(u64, BigInt, BigInt)> = generate_keys(128);
-    let s:Vec<BigInt> = message_to_big_int(String::from("Rust Go"));
+    let message:&str = &"Rust Go";
+    let s:Vec<BigInt> = message_to_big_int(String::from(message)).unwrap();
     let public_key:(u64, BigInt, BigInt) = (255, BigInt::new(Plus, vec![51114294,792744,539279,53659037,775929,68233,31241,773014,70887,46340,74320,37678,7986733]), BigInt::new(Plus, vec![2838854731,4512058,2674,8430942,387862,72231]));
     //let public_key:(u64, BigInt, BigInt) = init_key[0].clone();
     let private_key:(u64, BigInt, BigInt) = (255, BigInt::new(Plus, vec![511142,94792744,539279,53659037,775929,68233,31241,773014,70887,463407,4320,37678,7986733]), BigInt::new(Plus, vec![3540,476331342,3865494,64192,83506,075973254,4677,924822,556155058,765840405,909394423]));
     //let private_key:(u64, BigInt, BigInt) = init_key[1].clone();
     let encrypted:Vec<BigInt> = encrypt_message(private_key.1.clone(), private_key.2.clone(), s).expect("Houston, we can't ecrypt");
-    println!("{:?}", public_key);
-    print!("{:?}", private_key);
+    println!("Public Key {:?}", public_key);
+    print!("Private Key {:?}", private_key);
     println!("");
-    println!("{:?}", encrypted);
+    println!("Encrypted Message {:?}", encrypted);
 }
 
-fn break_decrypt() -> BigInt{
-    let one = BigInt::new(Plus, vec![1]);
+fn break_decrypt() -> Option<BigInt>{
+    let one:BigInt = BigInt::new(Plus, vec![1]);
     let public_key:(u64, BigInt, BigInt) = (255, BigInt::new(Plus, vec![511142,94792744,53927,953659,03777592,96823331,241773,014708874,6340,7432037,67879,86733]), BigInt::from_u128(283885473145120582674843094238786272231).expect(ERROR));
     let m:BigInt = BigInt::new(Plus, vec![88079,25475,557073180,772056,9331,672906466,182201,378675,96140,74399,726068082,3256474]);
     let n:BigInt = public_key.1;
     let e:BigInt = public_key.2;
-    let pq:(BigInt, BigInt) = find_key(&n).expect(ERROR);
+    let pq:(BigInt, BigInt) = find_key(&n).expect(ERROR).expect(ERROR);
     let p:BigInt = pq.0;
     let q:BigInt = pq.1;
-    let phi:BigInt = phi(&n, &p, &q);
+    let phi:BigInt = phi(&n, &p, &q).unwrap();
     let d:BigInt = (one.mod_floor(&phi))/e;
     let s:BigInt = decrypt_message(n, d, m).expect(ERROR);
     
-    s
+    Some(s)
 }
 
-fn message_to_big_int(message:String) -> Vec<BigInt> {
+fn message_to_big_int(message:String) -> Option<Vec<BigInt>> {
     /* 
     let vector:Vec<u8> = message.as_bytes().to_vec();
     let mut new_vector:Vec<u32> = vec![];
@@ -70,7 +70,7 @@ fn message_to_big_int(message:String) -> Vec<BigInt> {
     for i in vector{
         m.push(BigInt::new(Plus, vec![i.into()]));
     }
-    m
+    Some(m)
 }
 
 fn message_from_big_ints(s:String, n:BigInt, d:BigInt) -> Option<String>{
@@ -80,19 +80,16 @@ fn message_from_big_ints(s:String, n:BigInt, d:BigInt) -> Option<String>{
     for i in 0..s_vec.len(){
         let s_int:BigInt = BigInt::from_str(s_vec[i].as_str()).ok().expect(ERROR);
         let decrypted:BigInt = decrypt_message(n.clone(), d.clone(), s_int).expect(ERROR);
-        s_u128.push(decrypted.to_u128().expect(ERROR));
+        //Big Integer is too large
+        s_u128.push(decrypted.to_u128().unwrap());
     }
-    //let mut set:BitSet = BitSet::new();
-    let mut set:Vec<u32> = vec![];
-    for i in 0..s_u128.len(){
-        //set.insert(s_u128[i].try_into().expect(ERROR));
-        set.push(s_u128[i] as u32);
+    let mut bytes_array:Vec<Vec<u8>> = vec![];
+    for i in 0..s_u128.len() {
+        bytes_array.push(u8::to_ne_bytes(s_u128[i].try_into().expect(ERROR)).to_vec());
     }
-    //TODO convert from u32(bits) to bytes; fix shit
-    let i:usize = 0;
-    let mut bytes_array:Vec<u32> = u32::to_ne_bytes(set.iter().for_each(i)).to_vec();//wrong: ascii_converter::decimals_to_binary(set).ok().expect(ERROR);
-    let mut bits_array:Vec<u32> = vec![];
-    let m:String = ascii_converter::decimals_to_string(bytes_array).ok().expect(ERROR);
+    let new_bytes_array:Vec<u8> = bytes_array.concat();
+    let m:String = ascii_converter::decimals_to_string(&new_bytes_array).ok().expect(ERROR);
+
     Some(m)
 }
 
@@ -101,16 +98,18 @@ fn encrypt_message(n:BigInt, e:BigInt, s:Vec<BigInt>) -> Option<Vec<BigInt>>{
     for x in s{
         m.push(x.modpow(&e, &n));
     }
+
     Some(m)
 }
 
 fn decrypt_message(n:BigInt, d:BigInt, m:BigInt) -> Option<BigInt>{
     let s: BigInt = m.modpow(&d, &n);
+
     Some(s)
 }
 
 //for generating keys
-fn generate_keys(key_size:usize) -> Vec<(u64, BigInt, BigInt)>{
+fn generate_keys(key_size:usize) -> Result<Vec<(u64, BigInt, BigInt)>, &'static str>{
     let mut rng = OsRng;
     let mut p:BigInt = BigInt::from_biguint(Plus, prime::from_rng(key_size, &mut rng).expect("Houston, we have a problem"));
     let mut q:BigInt = BigInt::from_biguint(Plus, prime::from_rng(key_size, &mut rng).expect("Houston, we have a problem"));
@@ -123,32 +122,35 @@ fn generate_keys(key_size:usize) -> Vec<(u64, BigInt, BigInt)>{
             n = &p * &q;
     }
 
-    let phi:BigInt = phi(&n, &p, &q);
-    
-    let e:&BigInt = &BigInt::from_biguint(Plus,prime::from_rng(key_size, &mut rng).unwrap());
+    let phi:BigInt = phi(&n, &p, &q).unwrap();
+
+    let e:&BigInt = &BigInt::from_biguint(Plus,prime::from_rng(key_size, &mut rng).expect(ERROR));
     assert!(one < *e && e < &phi);
     assert!(*&e.gcd(&&phi) == one);
-    let d:BigInt = modular_inverse(e.clone(), phi);
+    let d:BigInt = modular_inverse(e.clone(), phi).expect(ERROR);
     
     let bits:u64 = n.bits().to_owned();
     
     let key_vector:Vec<(u64, BigInt, BigInt)> = vec![(bits, n.clone(), e.clone()),(bits, n, d)];
-    return key_vector;
+    
+    Ok(key_vector)
 }
+
 //make borrow checker happy!
 
-fn phi(n:&BigInt, p:&BigInt, q:&BigInt) -> BigInt{
+fn phi(n:&BigInt, p:&BigInt, q:&BigInt) -> Option<BigInt>{
     let one:BigInt = BigInt::new(Plus, vec![1]);
     assert!(n > &(p + q));
-    return n-p-q+one;
+
+    Some(n-p-q+one)
 }
 
 #[warn(unused_mut)]
-fn modular_inverse(a:BigInt,b:BigInt) -> BigInt{
-    let one:BigInt = BigInt::from_u32(1).expect("Houston this isn't one");
-    let zero:BigInt = BigInt::from_u32(0).expect("Houston this isn't zero");
+fn modular_inverse(a:BigInt,b:BigInt) -> Result<BigInt, &'static str>{
+    let one:BigInt = BigInt::from_u32(1).unwrap();
+    let zero:BigInt = BigInt::from_u32(0).unwrap();
     if b == one{
-        return one;
+        return Ok(one);
     }
     let mut r0:BigInt = b.clone();
     let mut x0:BigInt = zero.clone();
@@ -177,12 +179,12 @@ fn modular_inverse(a:BigInt,b:BigInt) -> BigInt{
     if x < zero {
         x -= b;
     }
-    return x;
+    return Ok(x);
 
 }
 
-//for breaking RSA
-fn find_key(n:&BigInt) -> Option<(BigInt, BigInt)>{
+//for breaking RSA::TODO: FIX
+fn find_key(n:&BigInt) -> Result<Option<(BigInt, BigInt)>, &'static str>{
     //find p and q that are prime factors of n
     //TODO: write dixon's or fermat's
     let zero:BigInt = BigInt::new(Plus, vec![0]);
@@ -202,5 +204,5 @@ fn find_key(n:&BigInt) -> Option<(BigInt, BigInt)>{
         p += 1;
     }
     let q:BigInt= fact1 / &p;
-    Some((p, q))
+    Ok(Some((p, q)))
 }
