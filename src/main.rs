@@ -10,7 +10,7 @@ use core::str;
 use std::thread::Thread;
 use num_prime::RandPrime;
 use std::str::{FromStr, from_utf8};
-
+use std::time::Instant;
 pub const ERROR:&'static str =  "Houston, we have a problem!";
 fn main() {
     println!("Hello, world!");
@@ -230,14 +230,17 @@ fn find_key(n:&BigInt) -> Result<Option<(BigInt, BigInt)>, &'static str>{
 }
 
 fn fermat(n:&BigInt) -> Option<(BigInt, BigInt)>{
-    let sqrt_n:BigInt = n.sqrt();
+    let init = Instant::now();
+    let one:BigInt = BigInt::new(Plus, vec![1]);
+    let sqrt_n:BigInt = n.sqrt() + 1;//make round
     let mut a:BigInt = &sqrt_n + 1;
     let mut b:BigInt = &sqrt_n - 1;
     
-    while &a - &b != sqrt_n{
+    while (&a * &a) - (&b * &b) != *n && (&a-&b) != one{
         a = a + 1;
-        b = b + 1;
+        b = b - 1;
     }
-
+    let elapsed = init.elapsed();
+    println!("Broke Encryption with Fermat in {:?} milliseconds", elapsed);
     Some((a,b))
 }
