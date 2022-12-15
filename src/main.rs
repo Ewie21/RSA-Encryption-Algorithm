@@ -1,29 +1,42 @@
 use num::bigint::Sign::Plus;
-use num::{FromPrimitive, ToPrimitive};
+use num::integer::sqrt;
+use num::{FromPrimitive, ToPrimitive, BigUint};
 use num_bigint::BigInt;
 use ascii_converter;
 use glass_pumpkin::prime;
-use rand::rngs::OsRng;
 use num::Integer;
+use rand::rngs::ThreadRng;
 use core::str;
-use std::str::{FromStr};
+use std::thread::Thread;
+use num_prime::RandPrime;
+use std::str::{FromStr, from_utf8};
 
 pub const ERROR:&'static str =  "Houston, we have a problem!";
 fn main() {
     println!("Hello, world!");
-    //encrypt();
-    let n:BigInt = BigInt::new(Plus, vec![5111,4294792,744539279,536590,3777,592968233,1241773,014708874,634074,32037,787986733]);
-    let d:BigInt = BigInt::new(Plus, vec![3540476331,3423865,4946,4192,8350607,59732,544677,924822556,155,0587658404,0590939,4423]);
-    let m:String = String::from_str("43523480568957643556056598073588326045632358739827075176433014710423208072366,7660875398775197036017946797402885728253113750305118616987624877524547526777,17806249614613240709012454116259851565279747745086632798880391847544812873910,30602200878766303830856244611504459722460374352086909538344418893252797099823,10276091053023654663382081867734471218386878308189837987833637383519654225401,28033260257532641202382135514168373578086822629095764654564412078020896066501").ok().expect(ERROR);
-    //let s:BigInt = decrypt_message(n, d, m).expect(ERROR);7
+    let message:&str = &"Rust Go";
+    let encrypted = encrypt(message);
+    let n:BigInt = encrypted.clone().unwrap().1.1;
+    let d:BigInt = encrypted.clone().unwrap().1.2;
+    let m_vec:Vec<BigInt> = encrypted.unwrap().2.to_vec();
+    let mut m:String = String::from("");
+    for i in 0..m_vec.len(){
+        m.push_str(m_vec[i].to_string().as_str());
+    }
+
+    //let n:BigInt = BigInt::new(Plus, vec![5111,4294792,744539279,536590,3777,592968233,1241773,014708874,634074,32037,787986733]);
+    //let d:BigInt = BigInt::new(Plus, vec![3540476331,3423865,4946,4192,8350607,59732,544677,924822556,155,0587658404,0590939,4423]);
+    //let m:String = String::from_str("43523480568957643556056598073588326045632358739827075176433014710423208072366,7660875398775197036017946797402885728253113750305118616987624877524547526777,17806249614613240709012454116259851565279747745086632798880391847544812873910,30602200878766303830856244611504459722460374352086909538344418893252797099823,10276091053023654663382081867734471218386878308189837987833637383519654225401,28033260257532641202382135514168373578086822629095764654564412078020896066501").ok().expect(ERROR);
+    //let s:BigInt = decrypt_message(n, d, m).expect(ERROR);
+
+    let d:BigInt = break_decrypt().unwrap();
     let s:String = message_from_big_ints(m, n, d).expect(ERROR);
     println!("{:?}", s);
-    
+
 }
 
-fn encrypt(){
+fn encrypt(message: &str) -> Result<((u64, BigInt, BigInt), (u64, BigInt, BigInt), Vec<BigInt>), String>{
     //let init_key:Vec<(u64, BigInt, BigInt)> = generate_keys(128);
-    let message:&str = &"Rust Go";
     let s:Vec<BigInt> = message_to_big_int(String::from(message)).unwrap();
     let public_key:(u64, BigInt, BigInt) = (255, BigInt::new(Plus, vec![51114294,792744,539279,53659037,775929,68233,31241,773014,70887,46340,74320,37678,7986733]), BigInt::new(Plus, vec![2838854731,4512058,2674,8430942,387862,72231]));
     //let public_key:(u64, BigInt, BigInt) = init_key[0].clone();
@@ -34,6 +47,8 @@ fn encrypt(){
     print!("Private Key {:?}", private_key);
     println!("");
     println!("Encrypted Message {:?}", encrypted);
+
+    Ok((public_key, private_key, encrypted))
 }
 
 fn break_decrypt() -> Option<BigInt>{
@@ -42,14 +57,14 @@ fn break_decrypt() -> Option<BigInt>{
     let m:BigInt = BigInt::new(Plus, vec![88079,25475,557073180,772056,9331,672906466,182201,378675,96140,74399,726068082,3256474]);
     let n:BigInt = public_key.1;
     let e:BigInt = public_key.2;
-    let pq:(BigInt, BigInt) = find_key(&n).expect(ERROR).expect(ERROR);
+    let pq:(BigInt, BigInt) = fermat(&n).expect(ERROR);
     let p:BigInt = pq.0;
     let q:BigInt = pq.1;
     let phi:BigInt = phi(&n, &p, &q).unwrap();
     let d:BigInt = (one.mod_floor(&phi))/e;
-    let s:BigInt = decrypt_message(n, d, m).expect(ERROR);
+    //let s:BigInt = decrypt_message(n, d, m).expect(ERROR);
     
-    Some(s)
+    Some(d)
 }
 
 fn message_to_big_int(message:String) -> Option<Vec<BigInt>> {
@@ -65,7 +80,7 @@ fn message_to_big_int(message:String) -> Option<Vec<BigInt>> {
     m
     */
 
-    let vector = ascii_converter::string_to_decimals(&message).unwrap();
+    let vector:Vec<u8> = ascii_converter::string_to_decimals(&message).unwrap();
     let mut m:Vec<BigInt> = vec![];
     for i in vector{
         m.push(BigInt::new(Plus, vec![i.into()]));
@@ -86,9 +101,10 @@ fn message_from_big_ints(s:String, n:BigInt, d:BigInt) -> Option<String>{
     let mut bytes_array:Vec<Vec<u8>> = vec![];
     for i in 0..s_u128.len() {
         bytes_array.push(u8::to_ne_bytes(s_u128[i].try_into().expect(ERROR)).to_vec());
+        
     }
     let new_bytes_array:Vec<u8> = bytes_array.concat();
-    let m:String = ascii_converter::decimals_to_string(&new_bytes_array).ok().expect(ERROR);
+    let m:String = from_utf8(&new_bytes_array).ok().expect(ERROR).to_owned();
 
     Some(m)
 }
@@ -110,21 +126,25 @@ fn decrypt_message(n:BigInt, d:BigInt, m:BigInt) -> Option<BigInt>{
 
 //for generating keys
 fn generate_keys(key_size:usize) -> Result<Vec<(u64, BigInt, BigInt)>, &'static str>{
-    let mut rng = OsRng;
-    let mut p:BigInt = BigInt::from_biguint(Plus, prime::from_rng(key_size, &mut rng).expect("Houston, we have a problem"));
-    let mut q:BigInt = BigInt::from_biguint(Plus, prime::from_rng(key_size, &mut rng).expect("Houston, we have a problem"));
+    let mut rng = rand::thread_rng();
+    let up:BigUint = rng.gen_prime(key_size/2, None);
+    let mut p:BigInt = BigInt::from_biguint(Plus, up);
+    let up:BigUint = rng.gen_prime(key_size/2, None);
+    let mut q:BigInt = BigInt::from_biguint(Plus, up);
     let one:BigInt = BigInt::new(Plus, vec![1]);
     let mut n:BigInt = &p * &q;
 
-    while n.bits() == p.bits() + q.bits() {
-            p = BigInt::from_biguint(Plus,prime::from_rng(key_size, &mut rng).unwrap());
-            q = BigInt::from_biguint(Plus,prime::from_rng(key_size, &mut rng).unwrap());
+    while n.bits() != p.bits() + q.bits() {
+            let up:BigUint = rng.gen_prime(key_size/2, None);
+            p = BigInt::from_biguint(Plus,up);
+            let up:BigUint = rng.gen_prime(key_size/2, None);
+            q = BigInt::from_biguint(Plus,up);
             n = &p * &q;
     }
 
     let phi:BigInt = phi(&n, &p, &q).unwrap();
-
-    let e:&BigInt = &BigInt::from_biguint(Plus,prime::from_rng(key_size, &mut rng).expect(ERROR));
+    let up:BigUint = rng.gen_prime(key_size/2, None);
+    let e:&BigInt = &BigInt::from_biguint(Plus,up);
     assert!(one < *e && e < &phi);
     assert!(*&e.gcd(&&phi) == one);
     let d:BigInt = modular_inverse(e.clone(), phi).expect(ERROR);
@@ -189,9 +209,11 @@ fn find_key(n:&BigInt) -> Result<Option<(BigInt, BigInt)>, &'static str>{
     //TODO: write dixon's or fermat's
     let zero:BigInt = BigInt::new(Plus, vec![0]);
     let two:BigInt = BigInt::new(Plus, vec![2]);
-    let mut rng:OsRng = OsRng;
-    assert!(prime::check_with(&n.to_biguint().expect("Houston, we have a problem!"), &mut rng));
-    let x:BigInt = BigInt::new(Plus, prime::new(n.bits() as usize).expect(ERROR).to_u32_digits());
+    let mut rng = rand::thread_rng();
+
+    //assert!(prime::check_with(&n.to_biguint().expect("Houston, we have a problem!"), &mut rng));
+    let up:BigUint = rng.gen_prime(n.bits() as usize, None);
+    let x:BigInt = BigInt::from_biguint(Plus, up);
     let y:BigInt = x.modpow(&two, &n);
     let diff:BigInt = y-x;
     let k:BigInt = &diff/n;
@@ -205,4 +227,17 @@ fn find_key(n:&BigInt) -> Result<Option<(BigInt, BigInt)>, &'static str>{
     }
     let q:BigInt= fact1 / &p;
     Ok(Some((p, q)))
+}
+
+fn fermat(n:&BigInt) -> Option<(BigInt, BigInt)>{
+    let sqrt_n:BigInt = n.sqrt();
+    let mut a:BigInt = &sqrt_n + 1;
+    let mut b:BigInt = &sqrt_n - 1;
+    
+    while &a - &b != sqrt_n{
+        a = a + 1;
+        b = b + 1;
+    }
+
+    Some((a,b))
 }
