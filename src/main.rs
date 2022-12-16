@@ -14,38 +14,44 @@ use std::time::Instant;
 pub const ERROR:&'static str =  "Houston, we have a problem!";
 fn main() {
     println!("Hello, world!");
-    let message:&str = &"Rust Go";
-    let encrypted = encrypt(message);
-    let n:BigInt = encrypted.clone().unwrap().1.1;
-    let d:BigInt = encrypted.clone().unwrap().1.2;
-    let m_vec:Vec<BigInt> = encrypted.unwrap().2.to_vec();
-    let mut m:String = String::from("");
-    for i in 0..m_vec.len(){
-        m.push_str(m_vec[i].to_string().as_str());
-    }
+    let key_size = 64;
+    //Generate a key_pair
+    let keys = generate_keys(key_size).ok().unwrap();
+    let message:&str = &"1000";
+    assert_eq!(keys[0].1, keys[1].1);
+    let n = &keys[0].1;
+    let d = keys[1].2.clone();
+    let e = &keys[0].2;
+
+    let encrypted = encrypt(message, &n.to_string(), &d.to_string(), &e.to_string()).unwrap();
+    let m_vec:Vec<BigInt> = encrypted.2.to_vec();
 
     //let n:BigInt = BigInt::new(Plus, vec![5111,4294792,744539279,536590,3777,592968233,1241773,014708874,634074,32037,787986733]);
     //let d:BigInt = BigInt::new(Plus, vec![3540476331,3423865,4946,4192,8350607,59732,544677,924822556,155,0587658404,0590939,4423]);
     //let m:String = String::from_str("43523480568957643556056598073588326045632358739827075176433014710423208072366,7660875398775197036017946797402885728253113750305118616987624877524547526777,17806249614613240709012454116259851565279747745086632798880391847544812873910,30602200878766303830856244611504459722460374352086909538344418893252797099823,10276091053023654663382081867734471218386878308189837987833637383519654225401,28033260257532641202382135514168373578086822629095764654564412078020896066501").ok().expect(ERROR);
     //let s:BigInt = decrypt_message(n, d, m).expect(ERROR);
 
-    let d:BigInt = break_decrypt().unwrap();
-    let s:String = message_from_big_ints(m, n, d).expect(ERROR);
-    println!("{:?}", s);
+    //let d:BigInt = break_decrypt().unwrap();
+    let s:Vec<BigInt> = decrypt_message(BigInt::from_str(n.clone().to_string().as_str()).ok().unwrap(), d, m_vec).unwrap();
+    println!("\n Decrypted {:?}", s);
+    //let s:String = decrypt(m, BigInt::from_str(n).ok().unwrap(), d).expect(ERROR);
+    //println!("{:?}", s);
 
 }
 
-fn encrypt(message: &str) -> Result<((u64, BigInt, BigInt), (u64, BigInt, BigInt), Vec<BigInt>), String>{
+fn encrypt(message: &str, n:&str, d:&str, e:&str) -> Result<((u64, BigInt, BigInt), (u64, BigInt, BigInt), Vec<BigInt>), String>{
     //let init_key:Vec<(u64, BigInt, BigInt)> = generate_keys(128);
-    let s:Vec<BigInt> = message_to_big_int(String::from(message)).unwrap();
-    let public_key:(u64, BigInt, BigInt) = (255, BigInt::new(Plus, vec![51114294,792744,539279,53659037,775929,68233,31241,773014,70887,46340,74320,37678,7986733]), BigInt::new(Plus, vec![2838854731,4512058,2674,8430942,387862,72231]));
+    //let s:Vec<BigInt> = message_to_vec_big_int(String::from(message)).unwrap();
+    let s:Vec<BigInt> = vec![BigInt::from_str(message).unwrap()];
+    let public_key:(u64, BigInt, BigInt) = (255, BigInt::from_str(n).unwrap(), BigInt::from_str(e).unwrap());
     //let public_key:(u64, BigInt, BigInt) = init_key[0].clone();
-    let private_key:(u64, BigInt, BigInt) = (255, BigInt::new(Plus, vec![511142,94792744,539279,53659037,775929,68233,31241,773014,70887,463407,4320,37678,7986733]), BigInt::new(Plus, vec![3540,476331342,3865494,64192,83506,075973254,4677,924822,556155058,765840405,909394423]));
+    let private_key:(u64, BigInt, BigInt) = (255, BigInt::from_str(n).unwrap(), BigInt::from_str(d).unwrap());
     //let private_key:(u64, BigInt, BigInt) = init_key[1].clone();
-    let encrypted:Vec<BigInt> = encrypt_message(private_key.1.clone(), private_key.2.clone(), s).expect("Houston, we can't ecrypt");
+    let encrypted:Vec<BigInt> = encrypt_vector(private_key.1.clone(), private_key.2.clone(), s.clone()).expect("Houston, we can't ecrypt");
     println!("Public Key {:?}", public_key);
     print!("Private Key {:?}", private_key);
     println!("");
+    println!("Original Message {:?}", s);
     println!("Encrypted Message {:?}", encrypted);
 
     Ok((public_key, private_key, encrypted))
@@ -67,7 +73,7 @@ fn break_decrypt() -> Option<BigInt>{
     Some(d)
 }
 
-fn message_to_big_int(message:String) -> Option<Vec<BigInt>> {
+fn message_to_big_int(message:String) -> Option<BigInt> {
     /* 
     let vector:Vec<u8> = message.as_bytes().to_vec();
     let mut new_vector:Vec<u32> = vec![];
@@ -81,45 +87,67 @@ fn message_to_big_int(message:String) -> Option<Vec<BigInt>> {
     */
 
     let vector:Vec<u8> = ascii_converter::string_to_decimals(&message).unwrap();
-    let mut m:Vec<BigInt> = vec![];
+    let mut m_vec:Vec<u32> = vec![];
     for i in vector{
-        m.push(BigInt::new(Plus, vec![i.into()]));
+        m_vec.push(i as u32);
     }
+    let m = BigInt::new(Plus, m_vec);
+
     Some(m)
 }
 
-fn message_from_big_ints(s:String, n:BigInt, d:BigInt) -> Option<String>{
-    let s:&str = &s.to_string();
-    let mut s_u128:Vec<u128> = vec![];
-    let s_vec:Vec<String> = s.split(",").map(str::to_string).collect();
-    for i in 0..s_vec.len(){
-        let s_int:BigInt = BigInt::from_str(s_vec[i].as_str()).ok().expect(ERROR);
-        let decrypted:BigInt = decrypt_message(n.clone(), d.clone(), s_int).expect(ERROR);
-        //Big Integer is too large
-        s_u128.push(decrypted.to_u128().unwrap());
-    }
-    let mut bytes_array:Vec<Vec<u8>> = vec![];
-    for i in 0..s_u128.len() {
-        bytes_array.push(u8::to_ne_bytes(s_u128[i].try_into().expect(ERROR)).to_vec());
+fn decrypt(s:String, n:BigInt, d:BigInt) -> Option<Vec<BigInt>>{
+    //let mut s_u128:Vec<u128> = vec![];
+    let s_vec:Vec<BigInt> = string_to_bigint_vec(s).unwrap();
+
+    let decrypted:Vec<BigInt> = decrypt_message(n.clone(), d.clone(), s_vec).expect(ERROR);
+    //Big Integer is too large
+    //s_u128.push(decrypted.to_u128().unwrap());
+    
+    //let mut bytes_array:Vec<Vec<u8>> = vec![];
+    // for i in 0..s_u128.len() {
+    //     bytes_array.push(u8::to_ne_bytes(s_u128[i].try_into().expect(ERROR)).to_vec());
         
+    // }
+    // let new_bytes_array:Vec<u8> = bytes_array.concat();
+    // let m:String = from_utf8(&new_bytes_array).ok().expect(ERROR).to_owned();
+
+    // Some(m)
+
+    Some(decrypted)
+}
+
+fn string_to_bigint_vec(str:String) -> Option<Vec<BigInt>>{
+
+    let str_vec:Vec<String> = str.split(",").map(str::to_string).collect();
+    let mut big_vec:Vec<BigInt> = vec![];
+    for i in 0..str_vec.len(){
+        big_vec.push(BigInt::from_str(&str_vec[i]).ok().unwrap());
     }
-    let new_bytes_array:Vec<u8> = bytes_array.concat();
-    let m:String = from_utf8(&new_bytes_array).ok().expect(ERROR).to_owned();
+
+    Some(big_vec)
+}
+
+fn encrypt_vector(n:BigInt, e:BigInt, s:Vec<BigInt>) -> Option<Vec<BigInt>>{
+    let mut m:Vec<BigInt> = vec![];
+    for i in 0..s.len(){
+        m.push(crypt(&n, &e, &s[i]).unwrap());
+    }
 
     Some(m)
 }
 
-fn encrypt_message(n:BigInt, e:BigInt, s:Vec<BigInt>) -> Option<Vec<BigInt>>{
-    let mut m:Vec<BigInt> = vec![BigInt::new(Plus, vec![])];
-    for x in s{
-        m.push(x.modpow(&e, &n));
-    }
+fn crypt(a:&BigInt, b:&BigInt, c:&BigInt) -> Option<BigInt>{
+    let ret: BigInt = c.modpow(&b, &a);
 
-    Some(m)
+    Some(ret)
 }
 
-fn decrypt_message(n:BigInt, d:BigInt, m:BigInt) -> Option<BigInt>{
-    let s: BigInt = m.modpow(&d, &n);
+fn decrypt_message(n:BigInt, d:BigInt, m:Vec<BigInt>) -> Option<Vec<BigInt>>{
+    let mut s:Vec<BigInt> = vec![];
+    for i in 0..m.len(){
+        s.push(crypt(&n, &d, &m[i]).unwrap())
+    }
 
     Some(s)
 }
@@ -226,21 +254,29 @@ fn find_key(n:&BigInt) -> Result<Option<(BigInt, BigInt)>, &'static str>{
         p += 1;
     }
     let q:BigInt= fact1 / &p;
+
     Ok(Some((p, q)))
 }
 
 fn fermat(n:&BigInt) -> Option<(BigInt, BigInt)>{
     let init = Instant::now();
     let one:BigInt = BigInt::new(Plus, vec![1]);
-    let sqrt_n:BigInt = n.sqrt() + 1;//make round
-    let mut a:BigInt = &sqrt_n + 1;
-    let mut b:BigInt = &sqrt_n - 1;
+    let sqrt_n:BigInt = n.sqrt();
+    let mut x:BigInt = &sqrt_n - 1;
+    let mut y:BigInt = BigInt::new(Plus, vec![0]);
     
-    while (&a * &a) - (&b * &b) != *n && (&a-&b) != one{
-        a = a + 1;
-        b = b - 1;
+    while (&x * &x) - (&y * &y) != *n && (&x-&y) != one{
+        if (&x * &x) - (&y * &y) < *n{
+            x += 1;
+            print!("here");
+        }else {
+            y += 1;
+        }
     }
+    let q:BigInt = x-y;
+    let p:BigInt = n/&q;
     let elapsed = init.elapsed();
     println!("Broke Encryption with Fermat in {:?} milliseconds", elapsed);
-    Some((a,b))
+
+    Some((p,q))
 }
