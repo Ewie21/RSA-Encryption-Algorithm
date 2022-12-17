@@ -1,3 +1,4 @@
+#![warn(unused_assignments)]
 use num::bigint::Sign::Plus;
 use num::integer::sqrt;
 use num::{FromPrimitive, ToPrimitive, BigUint};
