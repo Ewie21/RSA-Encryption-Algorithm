@@ -1,15 +1,16 @@
 use std::time::Instant;
 use num::bigint::Sign::Plus;
-use num::{FromPrimitive, BigUint, One, Zero};
-use num_bigint::BigInt;
+use num::{FromPrimitive, BigUint, One, Zero, abs};
+use num_bigint::{BigInt, RandBigInt};
 use ascii_converter;
 use num::Integer;
 use core::str;
 use num_prime::RandPrime;
 use std::str::{FromStr};
-//TODO: LEARN HOW BigInt::new() really works
-
+use std::io::{self, Read};
 pub static DEBUG:bool = false;
+
+//TODO: TRY TO FIGURE OUT HOW TO ENCRYPT AND DECRYPT BASED ON HOW THEY ENCRYPTED
 fn main() {
     //modular_inverse(BigInt::from_u8(3).unwrap(), BigInt::from_u8(26).unwrap()).ok().unwrap();
     //test_generate_encrypt_decrypt();
@@ -20,23 +21,118 @@ fn main() {
     assert_eq!(BigInt::from(128), BigInt::new(Plus, vec![128]));
     assert_eq!(BigInt::new(Plus, vec![1,4,8,4]), BigInt::new(Plus, vec![1,4,8,4]));
     //println!("{:?}", big_pow(BigInt::new(Plus, vec![10]), BigInt::new(Plus, vec![10000000,0000000000,000000000000000000,00000000000000,000000000000,000000000000,000000000000000,000000000000])));
-    //decrypt();
+    //println!("{:?}", break_decrypt(&BigInt::new(Plus, vec![3,8,3,7,7,6,2,3,9,6,8,0,7,9,4,3,7,3,6,8,5,9,4,9]), &BigInt::new(Plus, vec![6,4,7,3,1,5,74,5,0,5,9])));
+    //break_and_decrypt(BigInt::new(Plus, vec![]), BigInt::new(Plus, vec![]), )
+    //program();
+}
+
+fn program(){
+    loop {
+        let mut action = String::new();
+        println!("What action to do you want to perform?: ");
+        let _b = std::io::stdin().read_line(&mut action).unwrap();
+        let _pop = action.pop();
+        //Decryption
+        if action.to_lowercase() == String::from("decrypt") {
+            decrypt_program();
+            break;
+        //Encryption
+        }else if action.to_lowercase() == String::from("encrypt") {
+            encrypt_program();
+            break;
+        //Breaking Decryption
+        }else if action.to_lowercase() == String::from("break") {
+            break_decrypt_program();
+            break;
+        }else {
+            println!("You need to input a valid action");
+            println!("Decrypt, Encrypt, or Break");
+            println!("\n");
+            continue;
+        }
+
+    }   
+    
 }
 
 #[allow(unused)]
-fn decrypt(){
-    let decrypted:Vec<BigInt> = decrypt_vector(BigInt::new(Plus, vec![5,1,1,1,4,2,9,4,7,9,2,7,4,4,5,3,9,2,7,9,5,3,6,5,9,0,3,7,7,7,5,9,2,9,6,8,2,3,3,3,1,2,4,1,7,7,3,0,1,4,7,0,8,8,7,4,6,3,4,0,7,4,3,2,0,3,7,6,7,8,7,9,8,6,7,3,3]), BigInt::new(Plus, vec![3,5,4,0,4,7,6,3,3,1,3,4,2,3,8,6,5,4,9,4,6,4,1,9,2,8,3,5,0,6,0,7,5,9,7,3,2,5,4,4,6,7,7,9,2,4,8,2,2,5,5,6,1,5,5,0,5,8,7,6,5,8,4,0,4,0,5,9,0,9,3,9,4,4,2,3]), vec![BigInt::new(Plus, vec![4,3,5,2,3,4,8,0,5,6,8,9,5,7,6,4,3,5,5,6,0,5,6,5,9,8,0,7,3,5,8,8,3,2,6,0,4,5,6,3,2,3,5,8,7,3,9,8,2,7,0,7,5,1,7,6,4,3,3,0,1,4,7,1,0,4,2,3,2,0,8,0,7,2,3,6,6]),BigInt::new(Plus, vec![7,6,6,0,8,7,5,3,9,8,7,7,5,1,9,7,0,3,6,0,1,7,9,4,6,7,9,7,4,0,2,8,8,5,7,8,2,5,3,1,1,3,7,5,0,3,0,5,1,1,8,6,1,6,9,8,7,6,2,4,8,7,7,5,2,4,5,4,7,5,2,6,7,7,7]),BigInt::new(Plus, vec![1,7,8,0,6,2,4,9,6,1,4,6,1,3,2,4,0,7,0,9,0,1,2,4,5,4,1,1,6,2,5,9,8,5,1,5,6,5,2,7,9,7,4,7,7,4,5,0,8,6,6,3,2,7,9,8,8,8,0,3,9,1,8,4,7,5,4,4,8,1,2,8,7,3,9,1,0]),BigInt::new(Plus, vec![3,0,6,0,2,2,0,0,8,7,8,7,6,6,3,0,3,8,3,0,8,5,6,2,4,4,6,1,1,5,0,4,4,5,9,7,2,2,4,6,0,3,7,4,3,5,2,0,8,6,9,0,9,5,3,8,3,4,4,4,1,8,8,9,3,2,5,2,9,7,0,9,9,8,2,3]),BigInt::new(Plus, vec![1,0,2,7,6,0,9,1,0,5,3,0,2,3,6,5,4,6,6,3,3,8,2,0,8,1,8,6,7,7,3,4,4,7,1,2,1,8,3,8,6,8,7,8,3,0,8,1,8,9,8,3,7,9,8,7,8,3,3,6,3,7,3,8,3,5,1,9,6,5,4,2,2,5,4,0,1]),BigInt::new(Plus, vec![2,8,0,3,3,2,6,0,2,5,7,5,3,2,6,4,1,2,0,2,3,8,2,1,5,5,1,4,1,6,8,3,7,3,5,7,8,0,8,6,8,2,2,6,2,9,0,9,5,7,6,4,6,5,4,5,6,4,4,1,2,0,7,8,0,2,0,8,9,6,0,6,6,5,0,1])]).unwrap();
+fn decrypt(n:BigInt, d:BigInt, m:Vec<BigInt>) {
+    let decrypted:Vec<BigInt> = decrypt_vector(n, d, m).unwrap();
     let decrypted_message:String = message_from_big_int(decrypted.clone()).unwrap();
     println!("{:?} {:?}", decrypted, decrypted_message);
 }
 
+fn decrypt_program(){
+    //Key Handling
+    let mut init_pri_key = String::new();
+    println!("What is the private key?");
+    let _b_pub = std::io::stdin().read_line(&mut init_pri_key).unwrap();
+    let mut pri_key_ints:Vec<BigInt> = vec![];
+    let pri_key_str = init_pri_key.split(";").collect::<Vec<&str>>();
+    for i in 0..pri_key_str.len(){
+        let mut value = String::from(pri_key_str[i]);
+        let _pop = value.pop();
+        pri_key_ints.push(BigInt::from_str(value.as_str()).unwrap())
+    }
+    //Message Handling
+    let mut message_str = String::new();
+    println!("What is the message you want to decrypt");
+    let _b_message = std::io::stdin().read_line(&mut message_str).unwrap();
+    let message_str_vec:Vec<&str> = message_str.split(" ").collect::<Vec<&str>>();
+    let mut message_int:Vec<BigInt> = vec![];
+    for i in 0..message_str_vec.len(){
+        let mut value = String::from(message_str_vec[i]);
+        let _pop = value.pop();
+        message_int.push(BigInt::from_str(value.as_str()).unwrap());
+    }
+    
+    decrypt(pri_key_ints[1].clone(), pri_key_ints[2].clone(), message_int);
+}
+
+fn encrypt_program(){
+    let mut message_str = String::new();
+    println!("What is the message you want to encrypt");
+    let _b_message = std::io::stdin().read_line(&mut message_str).unwrap();
+    let _pop = message_str.pop();
+    let big_int_vec:Vec<BigInt> = message_to_big_int(message_str).unwrap();
+    let keys:Vec<(u64, BigInt, BigInt)> = generate_keys(64).ok().unwrap();
+    let n:BigInt = keys[0].1.clone();
+    let e:BigInt = keys[0].2.clone();
+    println!("{:?}", encrypt_vector(n, e, big_int_vec).unwrap());
+    
+}
+
+fn break_decrypt_program(){
+    let mut init_pub_key:String = String::new();
+    println!("What is the public key?");
+    let _b_pub = std::io::stdin().read_line(&mut init_pub_key).unwrap();
+    let mut pub_key_ints:Vec<BigInt> = vec![];
+    let pub_key_str:Vec<&str> = init_pub_key.split(";").collect::<Vec<&str>>();
+    for i in 0..pub_key_str.len(){
+        let mut value = String::from(pub_key_str[i]);
+        let _pop = value.pop();
+        pub_key_ints.push(BigInt::from_str(value.as_str()).unwrap());
+    }
+
+    let mut message_str = String::new();
+    println!("What is the message you want to decrypt");
+    let _b_message = std::io::stdin().read_line(&mut message_str).unwrap();
+    let message_str_vec:Vec<&str> = message_str.split(" ").collect::<Vec<&str>>();
+    let mut message_int:Vec<BigInt> = vec![];
+    for i in 0..message_str_vec.len(){
+        message_int.push(BigInt::from_str(message_str_vec[i]).unwrap());
+    }
+    let d:BigInt = break_decrypt(&pub_key_ints[1], &pub_key_ints[2]).unwrap();
+    decrypt(pub_key_ints[1].clone(), d, message_int);
+}
+
 #[allow(unused)]
 fn test_generate_convert_encrypt_break_decrypt_convert() {
-    let keys:Vec<(u64, BigInt, BigInt)> = generate_keys(32).ok().unwrap();
+    let keys:Vec<(u64, BigInt, BigInt)> = generate_keys(64).ok().unwrap();
     let n:&BigInt = &keys[0].1;
     let e:&BigInt = &keys[0].2;
 
-    let message:String = String::from("life");
+    let message:String = String::from("hello my name is elo");
     let s:Vec<BigInt> = message_to_big_int(message.clone()).unwrap();
     if DEBUG {println!("Unencrypted: {:?}", s)}; //Constant
 
@@ -114,7 +210,7 @@ fn modular_inverse(a:BigInt,b:BigInt) -> Result<BigInt, &'static str>{
     let mut r2:BigInt = BigInt::new(Plus, vec![]);
     let mut x2:BigInt = BigInt::new(Plus, vec![]);
     while r2 != one {
-    
+
         assert!(r1 != zero);
         q = &r0 / &r1;
         r2 = r0 - (&q * &r1);
@@ -248,8 +344,10 @@ fn fermat(n:&BigInt) -> Option<(BigInt, BigInt)>{
 }
 
 fn break_decrypt(n:&BigInt, e:&BigInt) -> Option<BigInt>{
-    let pq:(BigInt, BigInt) = fermat(&n).expect("Houston, we have a problem");
-    //let pq:(BigInt, BigInt) = dixon(&n).expect("Houston we have a problem");
+    let init = Instant::now();
+    let pq:(BigInt, BigInt) = pr(n.clone()).expect("Houston, we have a problem");
+    let elapsed = init.elapsed();
+    println!("Broke Encryption with pr in: {:?}", elapsed);
     let p:BigInt = pq.0;
     let q:BigInt = pq.1;
     assert!(&p * &q == *n);
@@ -381,4 +479,32 @@ fn dixon(n:&BigInt) {
 fn fr(r:BigInt, n:BigInt) -> Option<BigInt>{
 
     Some((&r * &r) % n)
+}
+
+use rand::{thread_rng, Rng};
+
+fn pr(n: BigInt) -> Option<(BigInt, BigInt)> {
+    let mut rng = rand::thread_rng();
+    let mut x:BigInt = rng.gen_bigint(n.bits());
+    let c:BigInt = rng.gen_bigint(n.bits());
+    // let mut x:BigInt = BigInt::from(2);
+    // let c:BigInt = BigInt::from(2);
+    let mut common:BigInt = BigInt::one();
+    let mut y:BigInt = x.clone();
+
+    while common == BigInt::one() {
+        x = f(&x, &c, &n);
+        y = f(&f(&y, &c, &n), &c, &n);
+
+        common = abs(&x - &y).gcd(&n);
+    }
+    if &common == &n {
+        return None;
+    }else {
+        return Some((common.clone(), n/common));
+    }
+}
+
+fn f(x:&BigInt, c:&BigInt, n:&BigInt) -> BigInt{
+    return ((x * x) + c) % n
 }
