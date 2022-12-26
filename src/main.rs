@@ -16,14 +16,14 @@ fn main() {
     //test_generate_encrypt_decrypt();
     //test_generate_encrypt_break_decrypt();
     //test_string_big_int_conversion();
-    test_generate_convert_encrypt_break_decrypt_convert();
+    //test_generate_convert_encrypt_break_decrypt_convert();
     //assert_eq!(BigInt::new(Plus, vec![0012]), BigInt::new(Plus, vec![0012]));
     assert_eq!(BigInt::from(128), BigInt::new(Plus, vec![128]));
     assert_eq!(BigInt::new(Plus, vec![1,4,8,4]), BigInt::new(Plus, vec![1,4,8,4]));
     //println!("{:?}", big_pow(BigInt::new(Plus, vec![10]), BigInt::new(Plus, vec![10000000,0000000000,000000000000000000,00000000000000,000000000000,000000000000,000000000000000,000000000000])));
     //println!("{:?}", break_decrypt(&BigInt::new(Plus, vec![3,8,3,7,7,6,2,3,9,6,8,0,7,9,4,3,7,3,6,8,5,9,4,9]), &BigInt::new(Plus, vec![6,4,7,3,1,5,74,5,0,5,9])));
     //break_and_decrypt(BigInt::new(Plus, vec![]), BigInt::new(Plus, vec![]), )
-    //program();
+    program();
 }
 
 fn program(){
