@@ -8,8 +8,90 @@ use core::str;
 use num_prime::RandPrime;
 use std::str::{FromStr};
 use std::io::{self, Read};
+use rand::{thread_rng, Rng};
+
 pub static DEBUG:bool = false;
 
+#[derive(Debug)]
+struct PubKey {
+    b: u64,
+    n: BigInt,
+    e: BigInt
+}
+#[derive(Debug)]
+struct PriKey {
+    b: u64,
+    n: BigInt,
+    d: BigInt
+}
+#[derive(Debug)]
+struct FullKey {
+    pri_key: PriKey,
+    pub_key: PubKey
+}
+
+impl FullKey {
+    fn generate_keys(key_size:usize) -> Result<FullKey, &'static str>{
+        let one:BigInt = BigInt::new(Plus, vec![1]);
+        let zero:BigInt = BigInt::new(Plus, vec![0]);
+        let mut rng = rand::thread_rng();
+        let up:BigUint = rng.gen_prime(key_size/2, None);
+        let mut p:BigInt = BigInt::from_biguint(Plus, up);
+    
+        let up:BigUint = rng.gen_prime(key_size/2, None);
+        let mut q:BigInt = BigInt::from_biguint(Plus, up);
+    
+        let mut n:BigInt = &p * &q;
+        while n.bits() != (key_size as u64).try_into().unwrap(){
+            while n.bits() != p.bits() + q.bits() || p.bits() & p.bits() != (key_size/2 as usize).try_into().unwrap() || n.bits() != (key_size as usize).try_into().unwrap(){
+                let up:BigUint = rng.gen_prime(key_size/2, None);
+                p = BigInt::from_biguint(Plus,up);
+        
+                let up:BigUint = rng.gen_prime(key_size/2, None);
+                q = BigInt::from_biguint(Plus,up);
+        
+                n = &p * &q;
+            }
+        }
+        while n.bits() != p.bits() + q.bits() || p.bits() & p.bits() != (key_size/2 as usize).try_into().unwrap() || n.bits() != (key_size as usize).try_into().unwrap(){
+            let up:BigUint = rng.gen_prime(key_size/2, None);
+            p = BigInt::from_biguint(Plus,up);
+    
+            let up:BigUint = rng.gen_prime(key_size/2, None);
+            q = BigInt::from_biguint(Plus,up);
+    
+            n = &p * &q;
+        }
+        let phi:BigInt = phi(&n, &p, &q).unwrap();
+    
+        let mut up:BigUint = rng.gen_prime(key_size/2, None);
+        let mut e:BigInt = BigInt::from_biguint(Plus,up);
+    
+        assert!(one < e && e < phi);
+        assert!(*&e.gcd(&&phi) == one);
+    
+        let mut d:BigInt = modular_inverse(e.clone(), phi.clone()).expect("ERROR");
+    
+        while e <= zero || d <= zero {
+            up = rng.gen_prime(key_size/2, None);
+            e = BigInt::from_biguint(Plus,up);
+    
+            assert!(one < e && e < phi);
+            assert!(*&e.gcd(&phi) == one);
+    
+            d = modular_inverse(e.clone(), phi.clone()).expect("ERROR");
+        }
+        
+        let bits:u64 = n.bits().to_owned();
+        // let e1:BigInt = &(one.mod_floor(&phi))/&d;
+        // assert!(e1 == e);
+        assert!(e > zero && d > zero);
+        let keys:FullKey = FullKey{ pri_key: PriKey{ b: bits, n: n.clone(), d: d.clone()} , pub_key: PubKey{ b: bits, n: n, e: e.clone() } } ;
+        println!("Public {:?};{:?};{:?} \nPrivate: {:?};{:?};{:?}", keys.pub_key.b, keys.pub_key.n, keys.pub_key.e, keys.pri_key.b, keys.pri_key.n, keys.pri_key.d);
+    
+        Ok(keys)
+    }
+}
 //TODO: TRY TO FIGURE OUT HOW TO ENCRYPT AND DECRYPT BASED ON HOW THEY ENCRYPTED
 fn main() {
     //modular_inverse(BigInt::from_u8(3).unwrap(), BigInt::from_u8(26).unwrap()).ok().unwrap();
@@ -37,13 +119,15 @@ fn program(){
             decrypt_program();
             break;
         //Encryption
-        }else if action.to_lowercase() == String::from("encrypt") {
+        }else if action.to_lowercase() == String::from("encryptG") {
             encrypt_program();
             break;
         //Breaking Decryption
         }else if action.to_lowercase() == String::from("break") {
             break_decrypt_program();
             break;
+        }else if action.to_lowercase() == String::from("encrypt"){
+            encrypt_key_program();
         }else {
             println!("You need to input a valid action");
             println!("Decrypt, Encrypt, or Break");
@@ -95,11 +179,38 @@ fn encrypt_program(){
     let _b_message = std::io::stdin().read_line(&mut message_str).unwrap();
     let _pop = message_str.pop();
     let big_int_vec:Vec<BigInt> = message_to_big_int(message_str).unwrap();
-    let keys:Vec<(u64, BigInt, BigInt)> = generate_keys(64).ok().unwrap();
-    let n:BigInt = keys[0].1.clone();
-    let e:BigInt = keys[0].2.clone();
+    let keys:FullKey= FullKey::generate_keys(64).ok().unwrap();
+    let n:BigInt = keys.pub_key.n;
+    let e:BigInt = keys.pub_key.e;
     println!("{:?}", encrypt_vector(n, e, big_int_vec).unwrap());
     
+}
+
+fn encrypt_key_program(){
+    let mut message_str:String = String::new();
+    println!("What is the message you want to encrypt");
+    let _b_message = std::io::stdin().read_line(&mut message_str).unwrap();
+    let _pop:char = message_str.pop().unwrap();
+    let big_int_vec:Vec<BigInt> = message_to_big_int(message_str).unwrap();
+    
+    let mut keys_str:String = String::new();
+    println!("What is the public key you want to encrypt with");
+    let _keys_message = std::io::stdin().read_line(&mut keys_str).unwrap();
+    let _pop = keys_str.pop();
+    let keys_vec = keys_str.split(";").collect::<Vec<&str>>();
+    let mut keys_int_vec = vec![];
+    for i in 0..keys_vec.len(){
+        let mut value = String::from(keys_vec[i]);
+        let _pop = value.pop();
+        keys_int_vec.push(BigInt::from_str(value.as_str()).unwrap());
+    }
+    let  b = keys_int_vec[0].bits();
+    let keys:PubKey = PubKey { 
+        b: b,
+        n: keys_int_vec[0].clone(),
+        e: keys_int_vec[1].clone()
+    };
+    println!("{:?}", encrypt_vector(keys.n, keys.e, big_int_vec));
 }
 
 fn break_decrypt_program(){
@@ -120,17 +231,18 @@ fn break_decrypt_program(){
     let message_str_vec:Vec<&str> = message_str.split(" ").collect::<Vec<&str>>();
     let mut message_int:Vec<BigInt> = vec![];
     for i in 0..message_str_vec.len(){
-        message_int.push(BigInt::from_str(message_str_vec[i]).unwrap());
+        println!("{:?}", message_str_vec[i]);
+        message_int.push(BigInt::from_str(message_str_vec[i].trim()).unwrap());
     }
-    let d:BigInt = break_decrypt(&pub_key_ints[1], &pub_key_ints[2]).unwrap();
+    let d:BigInt = break_decrypt(&pub_key_ints[0], &pub_key_ints[1]).unwrap();
     decrypt(pub_key_ints[1].clone(), d, message_int);
 }
 
 #[allow(unused)]
 fn test_generate_convert_encrypt_break_decrypt_convert() {
-    let keys:Vec<(u64, BigInt, BigInt)> = generate_keys(64).ok().unwrap();
-    let n:&BigInt = &keys[0].1;
-    let e:&BigInt = &keys[0].2;
+    let keys:FullKey= FullKey::generate_keys(64).ok().unwrap();
+    let n:&BigInt = &&keys.pub_key.n;
+    let e:&BigInt = &&keys.pub_key.e;
 
     let message:String = String::from("hello my name is elo");
     let s:Vec<BigInt> = message_to_big_int(message.clone()).unwrap();
@@ -152,9 +264,9 @@ fn test_generate_convert_encrypt_break_decrypt_convert() {
 
 #[allow(unused)]
 fn test_generate_encrypt_break_decrypt(){
-    let keys:Vec<(u64, BigInt, BigInt)> = generate_keys(32).ok().unwrap();
-    let n:&BigInt = &keys[0].1;
-    let e:&BigInt = &keys[0].2;
+    let keys:FullKey = FullKey::generate_keys(32).ok().unwrap();
+    let n:&BigInt = &&keys.pub_key.n;
+    let e:&BigInt = &&keys.pub_key.e;
 
     let s:Vec<BigInt> = vec![BigInt::from_u128(1000).unwrap()];
 
@@ -169,10 +281,10 @@ fn test_generate_encrypt_break_decrypt(){
 
 #[allow(unused)]
 fn test_generate_encrypt_decrypt(){
-    let keys:Vec<(u64, BigInt, BigInt)> = generate_keys(128).ok().unwrap();
-    let n:&BigInt = &keys[0].1;
-    let d:BigInt = keys[1].2.clone();
-    let e:&BigInt = &keys[0].2;
+    let keys:FullKey= FullKey::generate_keys(128).ok().unwrap();
+    let n:&BigInt = &&keys.pri_key.n;
+    let d:BigInt = keys.pri_key.d;
+    let e:&BigInt = &keys.pub_key.e;
 
     let s:Vec<BigInt> = vec![BigInt::from_u32(1000).unwrap()];
 
@@ -257,67 +369,8 @@ fn decrypt_vector(n:BigInt, d:BigInt, m:Vec<BigInt>) -> Option<Vec<BigInt>>{
     Some(s)
 }
 
-fn generate_keys(key_size:usize) -> Result<Vec<(u64, BigInt, BigInt)>, &'static str>{
-    let one:BigInt = BigInt::new(Plus, vec![1]);
-    let zero:BigInt = BigInt::new(Plus, vec![0]);
-    let mut rng = rand::thread_rng();
-    let up:BigUint = rng.gen_prime(key_size/2, None);
-    let mut p:BigInt = BigInt::from_biguint(Plus, up);
 
-    let up:BigUint = rng.gen_prime(key_size/2, None);
-    let mut q:BigInt = BigInt::from_biguint(Plus, up);
-
-    let mut n:BigInt = &p * &q;
-    while n.bits() != (key_size as u64).try_into().unwrap(){
-        while n.bits() != p.bits() + q.bits() || p.bits() & p.bits() != (key_size/2 as usize).try_into().unwrap() || n.bits() != (key_size as usize).try_into().unwrap(){
-            let up:BigUint = rng.gen_prime(key_size/2, None);
-            p = BigInt::from_biguint(Plus,up);
-    
-            let up:BigUint = rng.gen_prime(key_size/2, None);
-            q = BigInt::from_biguint(Plus,up);
-    
-            n = &p * &q;
-        }
-    }
-    while n.bits() != p.bits() + q.bits() || p.bits() & p.bits() != (key_size/2 as usize).try_into().unwrap() || n.bits() != (key_size as usize).try_into().unwrap(){
-        let up:BigUint = rng.gen_prime(key_size/2, None);
-        p = BigInt::from_biguint(Plus,up);
-
-        let up:BigUint = rng.gen_prime(key_size/2, None);
-        q = BigInt::from_biguint(Plus,up);
-
-        n = &p * &q;
-    }
-    let phi:BigInt = phi(&n, &p, &q).unwrap();
-
-    let mut up:BigUint = rng.gen_prime(key_size/2, None);
-    let mut e:BigInt = BigInt::from_biguint(Plus,up);
-
-    assert!(one < e && e < phi);
-    assert!(*&e.gcd(&&phi) == one);
-
-    let mut d:BigInt = modular_inverse(e.clone(), phi.clone()).expect("ERROR");
-
-    while e <= zero || d <= zero {
-        up = rng.gen_prime(key_size/2, None);
-        e = BigInt::from_biguint(Plus,up);
-
-        assert!(one < e && e < phi);
-        assert!(*&e.gcd(&phi) == one);
-
-        d = modular_inverse(e.clone(), phi.clone()).expect("ERROR");
-    }
-    
-    let bits:u64 = n.bits().to_owned();
-    // let e1:BigInt = &(one.mod_floor(&phi))/&d;
-    // assert!(e1 == e);
-    assert!(e > zero && d > zero);
-    let key_vector:Vec<(u64, BigInt, BigInt)> = vec![(bits, n.clone(), e.clone()),(bits, n, d)];
-    println!("{:?}", key_vector);
-
-    Ok(key_vector)
-}
-
+#[allow(unused)]
 fn fermat(n:&BigInt) -> Option<(BigInt, BigInt)>{
     let init = Instant::now();
     let one:BigInt = BigInt::new(Plus, vec![1]);
@@ -480,8 +533,6 @@ fn fr(r:BigInt, n:BigInt) -> Option<BigInt>{
 
     Some((&r * &r) % n)
 }
-
-use rand::{thread_rng, Rng};
 
 fn pr(n: BigInt) -> Option<(BigInt, BigInt)> {
     let mut rng = rand::thread_rng();
