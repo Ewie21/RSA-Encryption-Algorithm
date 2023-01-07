@@ -8,6 +8,7 @@ version = "0.1.0"
 dependencies = [
  "ascii_converter",
  "bit-set",
+ "bit-vec",
  "byte_array",
  "chrono",
  "glass_pumpkin",
