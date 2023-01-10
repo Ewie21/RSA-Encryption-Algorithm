@@ -6,12 +6,11 @@ use num_bigint::{BigInt, RandBigInt};
 use ascii_converter;
 use num::Integer;
 use core::str;
-use num_prime::RandPrime;
+use num_prime::{RandPrime, BitTest};
 use std::str::{FromStr};
 use std::io::{self, Read};
 use rand::{thread_rng, Rng};
-use bit_set::{BitSet};
-use bit_vec::{BitVec};
+use bit_reverse::ParallelReverse;
 
 pub static DEBUG:bool = false;
 
@@ -101,7 +100,7 @@ fn main() {
     //test_generate_encrypt_decrypt();
     //test_generate_encrypt_break_decrypt();
     //test_string_big_int_conversion();
-    test_generate_convert_encrypt_break_decrypt_convert();
+    //test_generate_convert_encrypt_break_decrypt_convert();
     //assert_eq!(BigInt::new(Plus, vec![0012]), BigInt::new(Plus, vec![0012]));
     assert_eq!(BigInt::from(128), BigInt::new(Plus, vec![128]));
     assert_eq!(BigInt::new(Plus, vec![1,4,8,4]), BigInt::new(Plus, vec![1,4,8,4]));
@@ -109,6 +108,8 @@ fn main() {
     //println!("{:?}", break_decrypt(&BigInt::new(Plus, vec![3,8,3,7,7,6,2,3,9,6,8,0,7,9,4,3,7,3,6,8,5,9,4,9]), &BigInt::new(Plus, vec![6,4,7,3,1,5,74,5,0,5,9])));
     //break_and_decrypt(BigInt::new(Plus, vec![]), BigInt::new(Plus, vec![]), )
     //program();
+
+    message_to_big_int(String::from("Hello, World!"));
 }
 
     fn program(){
@@ -247,7 +248,7 @@ fn main() {
         let n:&BigInt = &&keys.pub_key.n;
         let e:&BigInt = &&keys.pub_key.e;
 
-        let message:String = String::from("uuuuuuuu");
+        let message:String = String::from("hello");
         let s:Vec<BigInt> = message_to_big_int(message.clone()).unwrap();
         if DEBUG {println!("Unencrypted: {:?}", s)}; //Constant
 
@@ -414,56 +415,30 @@ fn break_decrypt(n:&BigInt, e:&BigInt) -> Option<BigInt>{
     Some(d)
 }
 
-use std::cmp::PartialEq;
-use std::ops::BitXor;
-use std::ops::Shl;
-
-#[derive(Debug)]
-pub enum ConversionError {
-    Overflow,
-    NonBinaryInput,
-}
-
-pub fn convert_bits<T: PartialEq + From<u8> + BitXor<Output=T> + Shl<Output=T> + Clone>(
-    bits: &[u8],
-) -> Result<T, ConversionError> {
-    if bits.len() > (std::mem::size_of::<T>() * 8) {
-        return Err(ConversionError::Overflow);
-    }
-    if bits.iter()
-        .filter(|&&bit| bit != 0 && bit != 1).count() > 0 {
-        return Err(ConversionError::NonBinaryInput);
-    }
-
-    Ok(bits.iter()
-        .fold(T::from(0), |result, &bit| {
-            (result << T::from(1)) ^ T::from(bit)
-        }))
-}
-
-
 fn message_to_big_int(message:String) -> Option<Vec<BigInt>> {
-    
-    let mut bytes:Vec<Vec<u8>> = vec![];
-    let message_vector:Vec<&str> = message.split(" ").collect();
-    for i in 0..message_vector.len() {
-        let values:Vec<&str> = message_vector[i].split("").collect();
-        let mut con_values = vec![];
-        for j in 0..values.len() {
-            con_values.push(ascii_converter::string_to_decimals(values[j]).unwrap());
+    let bytes:Vec<u8> = ascii_converter::string_to_decimals(&message).unwrap();
+    println!("{:?}", bytes);
+    //not functional
+    let mut i = 0;
+    while i < bytes.len() {
+        let mut int: u64 = 0;
+        for j in 0..7 {
+            if i + j >= bytes.len(){
+                break;
+            }
+            int = (int << 8) | (bytes[i + j]).swap_bits() as u64;
         }
-        bytes.push(con_values.concat());
-    }
-    
-    // for i in 0..message_vector.len(){
-    //     bytes.push(ascii_converter::string_to_decimals(message_vector[i]).unwrap());
-    // }
-    let mut m_vec:Vec<BigInt> = vec![];
-    for i in 0..bytes.len(){
-        m_vec.push(BigInt::from_bytes_be(Plus, &bytes[i]));
+        println!("{:?}", int);
+        i += 8;
     }
 
-    Some(m_vec)
+        // let mut m_vec:Vec<BigInt> = vec![];
+        // for i in 0..bytes.len(){
+        //     m_vec.push(BigInt::from_bytes_be(Plus, &bytes[i]));
+        // }
+
+    // Some(m_vec)
+    None
 }
 
 fn message_from_big_int(m_vec:Vec<BigInt>) -> Option<String>{
@@ -471,6 +446,8 @@ fn message_from_big_int(m_vec:Vec<BigInt>) -> Option<String>{
     let mut bytes:Vec<Vec<u8>> = vec![];
     for i in m_vec {
         bytes.push(i.to_bytes_be().1);
+        
+        
     }
     let mut message:String = String::from_str("").unwrap();
     let mut count:usize = 0;

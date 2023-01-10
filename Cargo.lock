@@ -9,6 +9,7 @@ dependencies = [
  "ascii_converter",
  "bit-set",
  "bit-vec",
+ "bit_reverse",
  "byte_array",
  "chrono",
  "glass_pumpkin",
@@ -65,6 +66,12 @@ name = "bit-vec"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "349f9b6a179ed607305526ca489b34ad0a41aed5f7980fa90eb03160b69598fb"
+
+[[package]]
+name = "bit_reverse"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "99528ca30abb9495c7e106bf7c3177b257c62040fc0f2909fe470b0f43097296"
 
 [[package]]
 name = "bitflags"
