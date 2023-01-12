@@ -99,217 +99,17 @@ fn main() {
     //test_generate_encrypt_decrypt();
     //test_generate_encrypt_break_decrypt();
     //test_string_big_int_conversion();
-    test_generate_convert_encrypt_break_decrypt_convert();
+    //test_generate_convert_encrypt_break_decrypt_convert();
     //assert_eq!(BigInt::new(Plus, vec![0012]), BigInt::new(Plus, vec![0012]));
     assert_eq!(BigInt::from(128), BigInt::new(Plus, vec![128]));
     assert_eq!(BigInt::new(Plus, vec![1,4,8,4]), BigInt::new(Plus, vec![1,4,8,4]));
     //println!("{:?}", big_pow(BigInt::new(Plus, vec![10]), BigInt::new(Plus, vec![10000000,0000000000,000000000000000000,00000000000000,000000000000,000000000000,000000000000000,000000000000])));
     //println!("{:?}", break_decrypt(&BigInt::new(Plus, vec![3,8,3,7,7,6,2,3,9,6,8,0,7,9,4,3,7,3,6,8,5,9,4,9]), &BigInt::new(Plus, vec![6,4,7,3,1,5,74,5,0,5,9])));
     //break_and_decrypt(BigInt::new(Plus, vec![]), BigInt::new(Plus, vec![]), )
-    //program();
+    program();
     //message_to_big_int(String::from("Hello, World!"));
+    //test_break_decrypt();
 }
-
-    fn program(){
-        loop {
-            let mut action = String::new();
-            println!("What action to do you want to perform?: ");
-            let _b = std::io::stdin().read_line(&mut action).unwrap();
-            let _pop = action.pop();
-            //Decryption
-            if action.to_lowercase() == String::from("decrypt") {
-                decrypt_program();
-                break;
-            //Encryption
-            }else if action.to_lowercase() == String::from("encryptG") {
-                encrypt_program();
-                break;
-            //Breaking Decryption
-            }else if action.to_lowercase() == String::from("break") {
-                break_decrypt_program();
-                break;
-            }else if action.to_lowercase() == String::from("encrypt"){
-                encrypt_key_program();
-            }else {
-                println!("You need to input a valid action");
-                println!("Decrypt, Encrypt, or Break");
-                println!("\n");
-                continue;
-            }
-
-        }   
-        
-    }
-
-    #[allow(unused)]
-    fn decrypt(n:BigInt, d:BigInt, m:Vec<BigInt>) {
-        let decrypted:Vec<BigInt> = decrypt_vector(n, d, m).unwrap();
-        let decrypted_message:String = message_from_big_int(decrypted.clone()).unwrap();
-        println!("{:?} {:?}", decrypted, decrypted_message);
-    }
-
-    fn decrypt_program(){
-        //Key Handling
-        let mut init_pri_key = String::new();
-        println!("What is the private key?");
-        let _b_pub = std::io::stdin().read_line(&mut init_pri_key).unwrap();
-        let mut pri_key_ints:Vec<BigInt> = vec![];
-        let pri_key_str = init_pri_key.split(",").collect::<Vec<&str>>();
-        for i in 0..pri_key_str.len(){
-            let mut value = String::from(pri_key_str[i]);
-            value.pop();
-            println!("{:?}", value);
-            let _pop = value.pop();
-            pri_key_ints.push(BigInt::from_str(value.as_str()).unwrap())
-        }
-        //Message Handling
-        let mut message_str = String::new();
-        println!("What is the message you want to decrypt");
-        let _b_message = std::io::stdin().read_line(&mut message_str).unwrap();
-        let message_str_vec:Vec<&str> = message_str.split(" ").collect::<Vec<&str>>();
-        let mut message_int:Vec<BigInt> = vec![];
-        for i in 0..message_str_vec.len(){
-            let mut value = String::from(message_str_vec[i]);
-            let _pop = value.pop();
-            message_int.push(BigInt::from_str(value.as_str()).unwrap());
-        }
-        
-        decrypt(pri_key_ints[1].clone(), pri_key_ints[2].clone(), message_int);
-    }
-
-    fn encrypt_program(){
-        let mut message_str = String::new();
-        println!("What is the message you want to encrypt");
-        let _b_message = std::io::stdin().read_line(&mut message_str).unwrap();
-        let _pop = message_str.pop();
-        let big_int_vec:Vec<BigInt> = message_to_big_int(message_str).unwrap();
-        let keys:FullKey= FullKey::generate_keys(64).ok().unwrap();
-        let n:BigInt = keys.pub_key.n;
-        let e:BigInt = keys.pub_key.e;
-        println!("{:?}", encrypt_vector(n, e, big_int_vec).unwrap());
-        
-    }
-
-    fn encrypt_key_program(){
-        let mut message_str:String = String::new();
-        println!("What is the message you want to encrypt");
-        let _b_message = std::io::stdin().read_line(&mut message_str).unwrap();
-        let _pop:char = message_str.pop().unwrap();
-        let big_int_vec:Vec<BigInt> = message_to_big_int(message_str).unwrap();
-        
-        let mut keys_str:String = String::new();
-        println!("What is the public key you want to encrypt with");
-        let _keys_message = std::io::stdin().read_line(&mut keys_str).unwrap();
-        let _pop = keys_str.pop();
-        let keys_vec = keys_str.split(";").collect::<Vec<&str>>();
-        let mut keys_int_vec = vec![];
-        for i in 0..keys_vec.len(){
-            let mut value = String::from(keys_vec[i]);
-            let _pop = value.pop();
-            keys_int_vec.push(BigInt::from_str(value.as_str()).unwrap());
-        }
-        let  b = keys_int_vec[0].bits();
-        let keys:PubKey = PubKey { 
-            b,
-            n: keys_int_vec[0].clone(),
-            e: keys_int_vec[1].clone()
-        };
-        println!("{:?}", encrypt_vector(keys.n, keys.e, big_int_vec));
-    }
-
-    fn break_decrypt_program() {
-        let mut init_pub_key:String = String::new();
-        println!("What is the public key?");
-        let _b_pub = std::io::stdin().read_line(&mut init_pub_key).unwrap();
-        let mut pub_key_ints:Vec<BigInt> = vec![];
-        let pub_key_str:Vec<&str> = init_pub_key.split(";").collect::<Vec<&str>>();
-        for i in 0..pub_key_str.len(){
-            let mut value = String::from(pub_key_str[i]);
-            let _pop = value.pop();
-            pub_key_ints.push(BigInt::from_str(value.as_str()).unwrap());
-        }
-        let d = break_decrypt(&pub_key_ints[1], &pub_key_ints[2]).unwrap();
-        println!("d {:?}", d);
-        println!("private key: {:?};{:?};{:?}", pub_key_ints[1].bits(), pub_key_ints[1], d);
-        let mut message_str = String::new();
-        println!("What is the message you want to decrypt");
-        let _b_message = std::io::stdin().read_line(&mut message_str).unwrap();
-        let message_str_vec:Vec<&str> = message_str.split(" ").collect::<Vec<&str>>();
-        let mut message_int:Vec<BigInt> = vec![];
-        for i in 0..message_str_vec.len(){
-            println!("{:?}", message_str_vec[i]);
-            let mut message_str_neo = message_str_vec[i].to_string();
-            message_str_neo.pop();
-            message_int.push(BigInt::from_str(message_str_neo.trim()).unwrap());
-        }
-        let d:BigInt = break_decrypt(&pub_key_ints[0], &pub_key_ints[1]).unwrap();
-        decrypt(pub_key_ints[1].clone(), d, message_int);
-    }
-
-    #[allow(unused)]
-    fn test_generate_convert_encrypt_break_decrypt_convert() {
-        let keys:FullKey= FullKey::generate_keys(100).ok().unwrap();
-        let n:&BigInt = &&keys.pub_key.n;
-        let e:&BigInt = &&keys.pub_key.e;
-
-        let message:String = String::from("Elo is a silly rust user please deoxidize");
-        let s:Vec<BigInt> = message_to_big_int(message.clone()).unwrap();
-        if DEBUG {println!("Unencrypted: {:?}", s)}; //Constant
-
-        let encrypted:Vec<BigInt> = encrypt_vector(n.clone(), e.clone(), s.clone()).unwrap();
-        if DEBUG {println!("Encrypted: {:?}", encrypted)}; //Variable
-
-        let d:BigInt = break_decrypt(n, e).unwrap();
-        if DEBUG {println!("d: {:?}", d)}; //Variable
-
-        let decrypted:Vec<BigInt> = decrypt_vector(n.clone(), d, encrypted.clone()).unwrap();
-        if DEBUG {println!("Decrypted: {:?}", decrypted)}; //Variable(This is the problem)
-
-        let decrypted_message:String = message_from_big_int(decrypted.clone()).unwrap();
-
-        print!("Message: {:?} Original: {:?} Encrypted: {:?} Decrypted: {:?} Message: {:?}", message, s, encrypted, decrypted, decrypted_message)
-    }
-
-    #[allow(unused)]
-    fn test_generate_encrypt_break_decrypt(){
-        let keys:FullKey = FullKey::generate_keys(32).ok().unwrap();
-        let n:&BigInt = &&keys.pub_key.n;
-        let e:&BigInt = &&keys.pub_key.e;
-
-        let s:Vec<BigInt> = vec![BigInt::from_u128(1000).unwrap()];
-
-        let encrypted:Vec<BigInt> = encrypt_vector(n.clone(), e.clone(), s.clone()).unwrap();
-
-        let d:BigInt = break_decrypt(n, e).unwrap();
-
-        let decrypted:Vec<BigInt> = decrypt_vector(n.clone(), d, encrypted.clone()).unwrap();
-
-        print!("Original: {:?} Encrypted: {:?} Decrypted: {:?}", s, encrypted, decrypted)
-    }
-
-    #[allow(unused)]
-    fn test_generate_encrypt_decrypt(){
-        let keys:FullKey= FullKey::generate_keys(128).ok().unwrap();
-        let n:&BigInt = &&keys.pri_key.n;
-        let d:BigInt = keys.pri_key.d;
-        let e:&BigInt = &keys.pub_key.e;
-
-        let s:Vec<BigInt> = vec![BigInt::from_u32(1000).unwrap()];
-
-        let encrypted:Vec<BigInt> = encrypt_vector(n.clone(), e.clone(), s.clone()).unwrap();
-
-        let decrypted:Vec<BigInt> = decrypt_vector(n.clone(), d, encrypted.clone()).unwrap();
-
-        print!("Original: {:?} Encrypted: {:?} Decrypted: {:?}", s, encrypted, decrypted)
-    }
-
-    #[allow(unused)]
-    fn test_string_big_int_conversion(){
-        let message:String = String::from_str("").ok().unwrap();
-        let m_vec:Vec<BigInt> = message_to_big_int(message.clone()).unwrap();
-        let final_message:String = message_from_big_int(m_vec.clone()).unwrap();
-        println!("Message: {:?} Message Vector: {:?} Final Message: {:?}", message, m_vec, final_message);
-    }
 
 #[allow(unused_assignments)]
 fn modular_inverse(a:BigInt,b:BigInt) -> Result<BigInt, &'static str>{
@@ -407,6 +207,7 @@ fn fermat(n:&BigInt) -> Option<(BigInt, BigInt)>{
 
 fn break_decrypt(n:&BigInt, e:&BigInt) -> Option<BigInt>{
     let init = Instant::now();
+    if DEBUG {println!("made it to breaking")}
     let pq:(BigInt, BigInt) = pr(n.clone()).expect("Houston, we have a problem");
     let elapsed = init.elapsed();
     println!("Broke Encryption with pr in: {:?}", elapsed);
@@ -455,6 +256,7 @@ fn message_from_big_int(m_vec:Vec<BigInt>) -> Option<String>{
     let mut bytes:Vec<Vec<u8>> = vec![];
     let mut int_vec:Vec<u64> = vec![];
     for i in m_vec {
+        if DEBUG {println!("{:?}", i)};
         int_vec.push(i.to_u64().unwrap());
     }
     if DEBUG {println!("Integer Array: {:?}", int_vec)}
@@ -541,10 +343,10 @@ fn fr(r:BigInt, n:BigInt) -> Option<BigInt>{
 
 fn pr(n: BigInt) -> Option<(BigInt, BigInt)> {
     let mut rng = rand::thread_rng();
-    let mut x:BigInt = rng.gen_bigint(n.bits() - 1);
-    let c:BigInt = rng.gen_bigint(n.bits() - 1);
-    // let mut x:BigInt = BigInt::from(2);
-    // let c:BigInt = BigInt::from(2);
+    // let mut x:BigInt = rng.gen_bigint(n.bits());
+    // let c:BigInt = rng.gen_bigint(n.bits());
+    let mut x:BigInt = BigInt::from(2);
+    let c:BigInt = BigInt::from(2);
     let mut common:BigInt = BigInt::one();
     let mut y:BigInt = x.clone()/2;
 
@@ -563,4 +365,228 @@ fn pr(n: BigInt) -> Option<(BigInt, BigInt)> {
 
 fn f(x:&BigInt, c:&BigInt, n:&BigInt) -> BigInt{
     return ((x * x) + c) % n
+}
+
+
+fn program(){
+    loop {
+        let mut action = String::new();
+        println!("What action to do you want to perform?: ");
+        let _b = std::io::stdin().read_line(&mut action).unwrap();
+        let _pop = action.pop();
+        //Decryption
+        if action.to_lowercase() == String::from("decrypt") {
+            decrypt_program();
+            break;
+        //Encryption
+        }else if action.to_lowercase() == String::from("encryptG") {
+            encrypt_program();
+            break;
+        //Breaking Decryption
+        }else if action.to_lowercase() == String::from("break") {
+            break_decrypt_program();
+            break;
+        }else if action.to_lowercase() == String::from("encrypt"){
+            encrypt_key_program();
+        }else {
+            println!("You need to input a valid action");
+            println!("Decrypt, Encrypt, or Break");
+            println!("\n");
+            continue;
+        }
+
+    }   
+    
+}
+
+#[allow(unused)]
+fn decrypt(n:BigInt, d:BigInt, m:Vec<BigInt>) {
+    let decrypted:Vec<BigInt> = decrypt_vector(n, d, m).unwrap();
+    let decrypted_message:String = message_from_big_int(decrypted.clone()).unwrap();
+    println!("{:?} {:?}", decrypted, decrypted_message);
+}
+
+fn decrypt_program(){
+    //Key Handling
+    let mut init_pri_key = String::new();
+    println!("What is the private key?");
+    let _b_pub = std::io::stdin().read_line(&mut init_pri_key).unwrap();
+    let mut pri_key_ints:Vec<BigInt> = vec![];
+    let pri_key_str = init_pri_key.split(";").collect::<Vec<&str>>();
+    for i in 0..pri_key_str.len(){
+        let mut value = String::from(pri_key_str[i]);
+        value.pop();
+        println!("{:?}", value);
+        value.pop();
+        pri_key_ints.push(BigInt::from_str(value.as_str()).unwrap())
+    }
+    //Message Handling
+    let mut message_str = String::new();
+    println!("What is the message you want to decrypt");
+    let _b_message = std::io::stdin().read_line(&mut message_str).unwrap();
+    let message_str_vec:Vec<&str> = message_str.split(",").collect::<Vec<&str>>();
+    let mut message_int:Vec<BigInt> = vec![];
+    for i in 0..message_str_vec.len(){
+        let mut value = String::from(message_str_vec[i]);
+        let _pop = value.pop();
+        message_int.push(BigInt::from_str(value.as_str()).unwrap());
+    }
+    
+    decrypt(pri_key_ints[1].clone(), pri_key_ints[2].clone(), message_int);
+}
+
+fn encrypt_program(){
+    let mut message_str = String::new();
+    println!("What is the message you want to encrypt");
+    let _b_message = std::io::stdin().read_line(&mut message_str).unwrap();
+    let _pop = message_str.pop();
+    let big_int_vec:Vec<BigInt> = message_to_big_int(message_str).unwrap();
+    let keys:FullKey= FullKey::generate_keys(64).ok().unwrap();
+    let n:BigInt = keys.pub_key.n;
+    let e:BigInt = keys.pub_key.e;
+    println!("{:?}", encrypt_vector(n, e, big_int_vec).unwrap());
+    
+}
+
+fn encrypt_key_program(){
+    let mut message_str:String = String::new();
+    println!("What is the message you want to encrypt");
+    let _b_message = std::io::stdin().read_line(&mut message_str).unwrap();
+    let _pop:char = message_str.pop().unwrap();
+    let big_int_vec:Vec<BigInt> = message_to_big_int(message_str).unwrap();
+    
+    let mut keys_str:String = String::new();
+    println!("What is the public key you want to encrypt with");
+    let _keys_message = std::io::stdin().read_line(&mut keys_str).unwrap();
+    let _pop = keys_str.pop();
+    let keys_vec = keys_str.split(";").collect::<Vec<&str>>();
+    let mut keys_int_vec = vec![];
+    for i in 0..keys_vec.len(){
+        let mut value = String::from(keys_vec[i]);
+        let _pop = value.pop();
+        keys_int_vec.push(BigInt::from_str(value.as_str()).unwrap());
+    }
+    let  b = keys_int_vec[0].bits();
+    let keys:PubKey = PubKey { 
+        b,
+        n: keys_int_vec[0].clone(),
+        e: keys_int_vec[1].clone()
+    };
+    println!("{:?}", encrypt_vector(keys.n, keys.e, big_int_vec));
+}
+
+fn break_decrypt_program() {
+    let mut init_pub_key:String = String::new();
+    println!("What is the public key?");
+    let _b_pub = std::io::stdin().read_line(&mut init_pub_key).unwrap();
+    let mut pub_key_ints:Vec<BigInt> = vec![];
+    let pub_key_str:Vec<&str> = init_pub_key.split(";").collect::<Vec<&str>>();
+    for i in 0..pub_key_str.len(){
+        let mut value = String::from(pub_key_str[i]);
+        let _pop = value.pop();
+        pub_key_ints.push(BigInt::from_str(value.as_str()).unwrap());
+    }
+    let d = break_decrypt(&pub_key_ints[1], &pub_key_ints[2]).unwrap();
+    println!("d {:?}", d);
+    println!("private key: {:?};{:?};{:?}", pub_key_ints[1].bits(), pub_key_ints[1], d);
+    let mut message_str = String::new();
+    println!("What is the message you want to decrypt");
+    let _b_message = std::io::stdin().read_line(&mut message_str).unwrap();
+    let message_str_vec:Vec<&str> = message_str.split(" ").collect::<Vec<&str>>();
+    let mut message_int:Vec<BigInt> = vec![];
+    for i in 0..message_str_vec.len(){
+        println!("{:?}", message_str_vec[i]);
+        let mut message_str_neo = message_str_vec[i].to_string();
+        message_str_neo.pop();
+        message_int.push(BigInt::from_str(message_str_neo.trim()).unwrap());
+    }
+    let d:BigInt = break_decrypt(&pub_key_ints[0], &pub_key_ints[1]).unwrap();
+    decrypt(pub_key_ints[1].clone(), d, message_int);
+}
+
+#[allow(unused)]
+fn test_generate_convert_encrypt_break_decrypt_convert() {
+    let keys:FullKey= FullKey::generate_keys(100).ok().unwrap();
+    let n:&BigInt = &&keys.pub_key.n;
+    let e:&BigInt = &&keys.pub_key.e;
+
+    let message:String = String::from("Elo is a silly rust user please deoxidize");
+    let s:Vec<BigInt> = message_to_big_int(message.clone()).unwrap();
+    if DEBUG {println!("Unencrypted: {:?}", s)}; //Constant
+
+    let encrypted:Vec<BigInt> = encrypt_vector(n.clone(), e.clone(), s.clone()).unwrap();
+    if DEBUG {println!("Encrypted: {:?}", encrypted)}; //Variable
+
+    let d:BigInt = break_decrypt(n, e).unwrap();
+    if DEBUG {println!("d: {:?}", d)}; //Variable
+
+    let decrypted:Vec<BigInt> = decrypt_vector(n.clone(), d, encrypted.clone()).unwrap();
+    if DEBUG {println!("Decrypted: {:?}", decrypted)}; //Variable(This is the problem)
+
+    let decrypted_message:String = message_from_big_int(decrypted.clone()).unwrap();
+
+    print!("Message: {:?} Original: {:?} Encrypted: {:?} Decrypted: {:?} Message: {:?}", message, s, encrypted, decrypted, decrypted_message)
+}
+
+#[allow(unused)]
+fn test_generate_encrypt_break_decrypt(){
+    let keys:FullKey = FullKey::generate_keys(32).ok().unwrap();
+    let n:&BigInt = &&keys.pub_key.n;
+    let e:&BigInt = &&keys.pub_key.e;
+
+    let s:Vec<BigInt> = vec![BigInt::from_u128(1000).unwrap()];
+
+    let encrypted:Vec<BigInt> = encrypt_vector(n.clone(), e.clone(), s.clone()).unwrap();
+
+    let d:BigInt = break_decrypt(n, e).unwrap();
+
+    let decrypted:Vec<BigInt> = decrypt_vector(n.clone(), d, encrypted.clone()).unwrap();
+
+    print!("Original: {:?} Encrypted: {:?} Decrypted: {:?}", s, encrypted, decrypted)
+}
+
+#[allow(unused)]
+fn test_generate_encrypt_decrypt(){
+    let keys:FullKey= FullKey::generate_keys(128).ok().unwrap();
+    let n:&BigInt = &&keys.pri_key.n;
+    let d:BigInt = keys.pri_key.d;
+    let e:&BigInt = &keys.pub_key.e;
+
+    let s:Vec<BigInt> = vec![BigInt::from_u32(1000).unwrap()];
+
+    let encrypted:Vec<BigInt> = encrypt_vector(n.clone(), e.clone(), s.clone()).unwrap();
+
+    let decrypted:Vec<BigInt> = decrypt_vector(n.clone(), d, encrypted.clone()).unwrap();
+
+    print!("Original: {:?} Encrypted: {:?} Decrypted: {:?}", s, encrypted, decrypted)
+}
+
+#[allow(unused)]
+fn test_string_big_int_conversion(){
+    let message:String = String::from_str("").ok().unwrap();
+    let m_vec:Vec<BigInt> = message_to_big_int(message.clone()).unwrap();
+    let final_message:String = message_from_big_int(m_vec.clone()).unwrap();
+    println!("Message: {:?} Message Vector: {:?} Final Message: {:?}", message, m_vec, final_message);
+}
+
+fn test_break_decrypt() {
+    let message:String = String::from_str("427082699202961660081635548589,257308990900421338058942854537,574998263658055632316677820304,306521457487953767562670597140,282112942623160744412936572918,212292727044276609518234945856").ok().unwrap(); //message goes here
+    let pub_key_str:String = String::from_str("100;705697450299153461734661545213;997654445494429").ok().unwrap(); // key goes here
+    let pub_key_split:Vec<&str> = pub_key_str.split(";").collect::<Vec<&str>>();
+    let mut pub_key_ints:Vec<BigInt> = vec![];
+    for i in pub_key_split {
+        pub_key_ints.push(BigInt::from_str(i).unwrap())
+    }
+    let pub_key:PubKey = PubKey { b: pub_key_ints[0].to_u64().unwrap(), n: pub_key_ints[1].clone(), e: pub_key_ints[2].clone() };
+    let m_vec_str = message.split(",").collect::<Vec<&str>>();
+    let mut m_vec = vec![];
+    for i in m_vec_str {
+        m_vec.push(BigInt::from_str(i).unwrap());
+    }
+    let d = break_decrypt(&pub_key.n, &pub_key.e).unwrap();
+    if DEBUG {println!("D: {:?}", d)};
+    let decrypted_ints = decrypt_vector(pub_key.n, d, m_vec.clone()).unwrap();
+    println!("Decrypted: {:?}", decrypted_ints);
+    let str_message = message_from_big_int(m_vec).unwrap();
+    println!("Final message: {:?}", str_message);
 }
